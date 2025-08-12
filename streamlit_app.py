@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import yaml
-from yaml.loader import SafeLoader
 
 def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.DataFrame:
     global selected_index
