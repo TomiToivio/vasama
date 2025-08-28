@@ -382,8 +382,8 @@ if "selected_row_index" not in st.session_state:
 else:   
     selected_index = st.session_state.selected_row_index
 
-st.title("Vasama: Mastodon Data Analysis Demo")
+st.title("Vasama: Telegram Data Analysis Demo")
 
 vasama_dashboard()
 
-st.caption("Vasama: Mastodon Data Analysis Demo")
+st.caption("Vasama: Telegram Data Analysis Demo")
