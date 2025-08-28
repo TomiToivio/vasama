@@ -278,7 +278,6 @@ def vasama_dashboard():
                 st.write("**Message URL:**", message_url)
                 st.write("**Message Date:**", message_date)
                 st.write("**Message Text:**", message_text)
-                st.write("**Message Language:**", message_language)
                 st.write("**Translated Text:**", message_translated)
             with col2:
                 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Multimodal", "OSINT", "Political", "Entities", "Sentiments", "Topics", "Whisper"])
