@@ -259,7 +259,7 @@ def vasama_dashboard():
             message_text = message_data.get("message_text", "N/A")
             message_date = message_data.get("message_date", "N/A")
             message_username = message_data.get("message_username", "N/A")
-            message_translated = message_data.get("message_translated", "N/A")
+            message_translated = message_data.get("translated_text", "N/A")
             multimodal_analysis = message_data.get("multimodal_analysis", "N/A")
             osint_analysis = message_data.get("osint_analysis", "N/A")
             osint_entities = message_data.get("osint_entities", "N/A")
@@ -277,35 +277,44 @@ def vasama_dashboard():
                 st.subheader("Message Details")
                 st.write("**Message URL:**", message_url)
                 st.write("**Message Date:**", message_date)
-                st.write("**Message Text:**", message_text)
-                st.write("**Translated Text:**", message_translated)
+                st.subheader("Message Text")
+                message_text = message_text.replace("\\n", "<br>")
+                st.markdown(message_text, unsafe_allow_html=True)
+                st.subheader("Translated Text")
+                message_translated = message_translated.replace("\\n", "<br>")
+                st.markdown(message_translated, unsafe_allow_html=True)
             with col2:
                 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Multimodal", "OSINT", "Political", "Entities", "Sentiments", "Topics", "Whisper"])
                 with tab1:
-                    st.subheader("Multimodal")
-                    st.write("**Multimodal Analysis:**", multimodal_analysis)
+                    #st.subheader("Multimodal Analysis")
+                    # Convert "\n"
+                    st.header("Multimodal Analysis")
+                    multimodal_analysis = multimodal_analysis.replace('\\n', '<br>')
+                    st.markdown(multimodal_analysis, unsafe_allow_html=True)
                 with tab2:
-                    st.subheader("OSINT")
-                    st.write("**OSINT Analysis:**", osint_analysis)
+                    st.subheader("OSINT Analysis")
+                    osint_analysis = osint_analysis.replace("\\n", "<br>")
+                    st.markdown(osint_analysis, unsafe_allow_html=True)
                 with tab3:
-                    st.subheader("Political")
-                    st.write("**Political Analysis:**", political_analysis)
+                    st.subheader("Political Analysis")
+                    political_analysis = political_analysis.replace("\\n", "<br>")
+                    st.markdown(political_analysis, unsafe_allow_html=True)
                 with tab4:
                     st.subheader("Entities")
-                    st.write("**OSINT Entities:**", osint_entities)
+                    st.write(str(osint_entities))
                 with tab5:
                     st.subheader("Sentiments")
-                    st.write("**Positive Sentiments:**", positive_sentiments)
-                    st.write("**Neutral Sentiments:**", neutral_sentiments)
-                    st.write("**Negative Sentiments:**", negative_sentiments)
+                    st.write("**Positive Sentiments:**", str(positive_sentiments))
+                    st.write("**Neutral Sentiments:**", str(neutral_sentiments))
+                    st.write("**Negative Sentiments:**", str(negative_sentiments))
                 with tab6:
                     st.subheader("Topics")
-                    st.write("**OSINT Topics:**", osint_topics)
+                    st.write("**OSINT Topics:**", str(osint_topics))
                 with tab7:
                     st.subheader("Whisper")
-                    st.write("**Whisper Transcript:**", whisper_transcript)
-                    st.write("**Whisper Language:**", whisper_language)
-                    st.write("**Whisper Translated:**", whisper_translated)
+                    st.write("**Whisper Transcript:**", str(whisper_transcript))
+                    st.write("**Whisper Language:**", str(whisper_language))
+                    st.write("**Whisper Translated:**", str(whisper_translated))
 
     if selection.empty:
         tab1, tab2, tab3 = st.tabs(["Sentiments", "Entities", "Topics"])
@@ -362,7 +371,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    return pd.read_csv("messages.csv", engine='python')
+    return pd.read_csv("messages.csv", engine='python', encoding='utf-8')
 
 df = load_data()
 
