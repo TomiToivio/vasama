@@ -371,7 +371,10 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    return pd.read_csv("messages.csv", engine='python', encoding='utf-8')
+    df = pd.read_csv("messages.csv", engine='python', encoding='utf-8')
+    # Convert message_date to datetime
+    df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
+    return df
 
 df = load_data()
 
