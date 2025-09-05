@@ -431,13 +431,7 @@ def vasama_dashboard():
                         osint_map(map_coordinates)
                     else:
                         st.write("No map coordinates available for this message.")
-                with tab8:
-                    st.subheader("Graph")
-                    # If network edges is not empty
-                    if network_edges and network_edges != "N/A" and network_edges != "[]":
-                        osint_graph([network_edges])
-                    else:
-                        st.write("No network edges available for this message.")
+
 
 
     if selection.empty:
