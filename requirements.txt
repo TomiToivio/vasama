@@ -2,3 +2,6 @@ pandas
 matplotlib
 streamlit
 plotly
+folium
+streamlit_folium
+

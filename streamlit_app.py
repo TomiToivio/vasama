@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import plotly.figure_factory as ff
 import plotly.express as px
 import plotly.graph_objects as go
+import folium
+from streamlit_folium import st_folium
+
 
 def _count_series_to_df(s: pd.Series, name="count", index_name="value"):
     df = s.reset_index()
@@ -57,6 +60,53 @@ def table_topic_words(topic_col, words_col, df, title):
     )
     fig.update_layout(title=title, margin=dict(t=60, r=20, b=40, l=20))
     return fig
+
+def osint_map(map_coordinates):
+    map_coordinates = eval(map_coordinates)
+    # get last lat and lng
+    last_coord = map_coordinates[-1]
+    lat = last_coord.get("lat", 48.8891738)
+    lng = last_coord.get("lng", 30.922972)
+    # 48.8891738,30.922972,6.5z
+    geomap = folium.Map(location=[lat, lng], zoom_start=16)
+    for coord in map_coordinates:
+        event = coord.get("event", "N/A")
+        lat = coord.get("lat")
+        lng = coord.get("lng")
+        location = coord.get("location", "N/A")
+        description = coord.get("description", "N/A")
+        popup_text = f"Event: {event}<br>Description: {description}"
+        # Change icon
+        folium.Marker(
+            [lat, lng], popup=popup_text, tooltip=location, icon=folium.Icon(color="blue", icon="info-sign")
+        ).add_to(geomap)
+    # call to render Folium map in Streamlit
+    st_data = st_folium(geomap, width=725)
+
+def osint_map_multiple(all_map_coordinates):
+    cleaned_coordinates = []
+    # 48.8891738,30.922972,6.5z
+    geomap = folium.Map(location=[48.8891738, 30.922972], zoom_start=7)
+    for map_coordinate_list in all_map_coordinates:
+        map_coordinate_list = eval(map_coordinate_list)
+        # If not empty, add to cleaned_coordinates
+        if map_coordinate_list:
+            # if has lat and lng
+            for coord in map_coordinate_list:
+                if "lat" in coord and "lng" in coord:
+                    cleaned_coordinates.append(coord)
+    for coordinates in cleaned_coordinates:
+        event = coordinates.get("event", "N/A")
+        lat = coordinates.get("lat")
+        lng = coordinates.get("lng")
+        location = coordinates.get("location", "N/A")
+        description = coordinates.get("description", "N/A")
+        popup_text = f"Event: {event}<br>Description: {description}"
+        # Change icon
+        folium.Marker(
+            [lat, lng], popup=popup_text, tooltip=location, icon=folium.Icon(color="blue", icon="info-sign")
+        ).add_to(geomap)
+    st_data = st_folium(geomap, width="100%")
 
 def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.DataFrame:
     global selected_index
@@ -136,6 +186,18 @@ def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.
             label="Whisper Translated",
             help="Translated text of the whisper audio.",
         ),
+        "map_coordinates": st.column_config.TextColumn(
+            label="Map Coordinates",
+            help="Geographical coordinates mentioned in the message.",
+        ),
+        "network_edges": st.column_config.TextColumn(
+            label="Network Edges",
+            help="Network edges mentioned in the message.",
+        ),
+        "timeline_dates": st.column_config.TextColumn(
+            label="Timeline Dates",
+            help="Timeline dates mentioned in the message.",
+        ),
         "channel_id": None,
         "geo_locations": None,
         "message_id": None,
@@ -151,7 +213,7 @@ def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.
         df_with_selections,
         hide_index=True,
         column_config=column_config,
-        column_order=["Select","message_url","message_date","message_text","translated_text","message_language","multimodal_analysis","osint_analysis","political_analysis","osint_topics","osint_entities","positive_sentiments","neutral_sentiments","negative_sentiments","whisper_language","whisper_transcript","whisper_translated"],
+        column_order=["Select","message_url","message_date","message_text","translated_text","message_language","multimodal_analysis","osint_analysis","political_analysis","osint_topics","osint_entities","positive_sentiments","neutral_sentiments","negative_sentiments","whisper_language","whisper_transcript","whisper_translated","map_coordinates","network_edges","timeline_dates"],
         disabled=df.columns,
     )
     selected_rows = edited_df[edited_df.Select]
@@ -272,6 +334,7 @@ def vasama_dashboard():
             whisper_transcript = message_data.get("whisper_transcript", "N/A")
             whisper_language = message_data.get("whisper_language", "N/A")
             whisper_translated = message_data.get("whisper_translated", "N/A")
+            map_coordinates = message_data.get("map_coordinates", "N/A")
             col1, col2 = st.columns([0.3, 0.7])
             with col1:
                 st.subheader("Message Details")
@@ -284,7 +347,7 @@ def vasama_dashboard():
                 message_translated = message_translated.replace("\\n", "<br>")
                 st.markdown(message_translated, unsafe_allow_html=True)
             with col2:
-                tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Multimodal", "OSINT", "Political", "Entities", "Sentiments", "Topics", "Whisper"])
+                tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Multimodal", "OSINT", "Political", "Entities", "Sentiments", "Topics", "Whisper", "Map"])
                 with tab1:
                     #st.subheader("Multimodal Analysis")
                     # Convert "\n"
@@ -315,10 +378,22 @@ def vasama_dashboard():
                     st.write("**Whisper Transcript:**", str(whisper_transcript))
                     st.write("**Whisper Language:**", str(whisper_language))
                     st.write("**Whisper Translated:**", str(whisper_translated))
+                with tab8:
+                    st.subheader("Coordinates")
+                    # If map coordinates is not empty
+                    if map_coordinates and map_coordinates != "N/A" and map_coordinates != "[]":
+                        osint_map(map_coordinates)
+                    else:
+                        st.write("No map coordinates available for this message.")
 
     if selection.empty:
-        tab1, tab2, tab3 = st.tabs(["Sentiments", "Entities", "Topics"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Map", "Sentiments", "Entities", "Topics"])
         with tab1:
+            st.subheader("Map")
+            all_map_coordinates = filtered_df["map_coordinates"].dropna().astype(str)
+            # remove empty coordinates
+            osint_map_multiple(all_map_coordinates)
+        with tab2:
             st.subheader("Number of Messages")
             total_message_count = len(df)
             filtered_message_count = len(filtered_df)
@@ -337,20 +412,21 @@ def vasama_dashboard():
             neg = filtered_df["negative_sentiments"].dropna().astype(str).str.split(", ").explode().value_counts().head(20)
             st.plotly_chart(bar_counts(neg, title="Top negative", x_label="Negative"), use_container_width=True)
 
-        with tab2:
+        with tab3:
             st.subheader("Top Entities")
             entities_series = filtered_df["osint_entities"].dropna().astype(str).str.split(", ").explode()
             top_entities = entities_series.value_counts().head(20)
             # horizontal bar is often easier to read for long labels put ones with largest count to top
             fig = bar_counts(top_entities, title="Top 20 entities", x_label="Count", orientation="v")
             st.plotly_chart(fig, use_container_width=True)
-        with tab3:
+        with tab4:
             # Most Frequent Topics
             st.subheader("Top Topics")
             topics_series = filtered_df["osint_topics"].dropna().astype(str).str.split(", ").explode()
             top_topics = topics_series.value_counts().head(20)
             fig = bar_counts(top_topics, title="Top 20 topics", x_label="Topic")
             st.plotly_chart(fig, use_container_width=True)
+
 
 
 st.set_page_config(
@@ -371,7 +447,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("messages.csv", engine='python', encoding='utf-8')
+    df = pd.read_csv("vasama_dataframe.csv", engine='python', encoding='utf-8')
     # Convert message_date to datetime
     df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
     return df
