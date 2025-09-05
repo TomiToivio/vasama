@@ -5,4 +5,4 @@ plotly
 folium
 streamlit-folium
 streamlit-agraph
-streamlit-vis-timeline
+streamlit-timeline
