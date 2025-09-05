@@ -3,5 +3,6 @@ matplotlib
 streamlit
 plotly
 folium
-streamlit_folium
-
+streamlit-folium
+streamlit-agraph
+streamlit-vis-timeline
