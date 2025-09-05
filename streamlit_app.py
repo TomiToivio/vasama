@@ -6,7 +6,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import folium
 from streamlit_folium import st_folium
-
+from streamlit_agraph import agraph, Node, Edge, Config
+from streamlit_timeline import st_timeline
+from datetime import datetime, timedelta
 
 def _count_series_to_df(s: pd.Series, name="count", index_name="value"):
     df = s.reset_index()
@@ -82,6 +84,47 @@ def osint_map(map_coordinates):
         ).add_to(geomap)
     # call to render Folium map in Streamlit
     st_data = st_folium(geomap, width=725)
+
+def osint_timeline(timeline_dates):
+    timeline_items = []
+    for timeline_date in timeline_dates:
+        print(timeline_date)
+        event = timeline_date["event"]
+        date = timeline_date["date"]
+        # Make end date one day after start date
+        end_date = (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+        description = timeline_date["description"]
+        # If has event, date, description
+        if event and date:
+            timeline_items.append({
+                "id": len(timeline_items) + 1,
+                "content": f"{event}: {description}",
+                "start": date,
+                "end": date,
+                "type": "box",
+            })
+    timeline = st_timeline(timeline_items, groups=[], options={}, height="300px")
+    st.subheader("Event Timeline")
+    st.write(timeline)
+
+def osint_graph(edges_list):
+    nodes = []
+    edges = []
+    for edge in edges_list:
+        source = edge["source"]
+        target = edge["target"]
+        description = edge["description"]
+        if source and target:
+            # check if node already in nodes
+            if not any(node.id == source for node in nodes):
+                nodes.append(Node(id=source))
+            if not any(node.id == target for node in nodes):
+                nodes.append(Node(id=target))
+            # check if edge already in edges
+            edges.append(Edge(source=source, target=target, label=description))
+    config = Config(width="100%", height=400, directed=True, physics=True, hierarchical=False)
+    return agraph(nodes=nodes, edges=edges, config=config)
+
 
 def osint_map_multiple(all_map_coordinates):
     cleaned_coordinates = []
@@ -278,7 +321,32 @@ def vasama_dashboard():
         index=0,  
         help="Filter by negative sentiments."
     )
-    # 
+    # Add start and end date filter
+    min_date = df["message_date"].min().date()
+    max_date = df["message_date"].max().date()
+    # Add default end date 2025-08-24
+    default_end_date = datetime(2025, 8, 24).date()
+    # add default start date 2025-08-23
+    default_start_date = datetime(2025, 8, 23).date()
+    # Add start date filter
+    start_date = st.sidebar.date_input(
+        "Select start date:",
+        value=default_start_date,
+        min_value=min_date,
+        max_value=max_date,
+        help="Filter by start date."
+    )
+    # Add end date filter
+    end_date = st.sidebar.date_input(
+        "Select end date:",
+        value=default_end_date,
+        min_value=min_date,
+        max_value=max_date,
+        help="Filter by end date."
+    )
+    if start_date > end_date:
+        st.sidebar.error("Error: End date must fall after start date.")
+    df = df[(df["message_date"].dt.date >= start_date) & (df["message_date"].dt.date <= end_date)]
     filtered_df = df.copy()
     if osint_topic_filter_selection == "All":
         osint_topic_filter = df["osint_topics"].unique().tolist()
@@ -335,6 +403,7 @@ def vasama_dashboard():
             whisper_language = message_data.get("whisper_language", "N/A")
             whisper_translated = message_data.get("whisper_translated", "N/A")
             map_coordinates = message_data.get("map_coordinates", "N/A")
+            network_edges = message_data.get("network_edges", "N/A")
             col1, col2 = st.columns([0.3, 0.7])
             with col1:
                 st.subheader("Message Details")
@@ -385,15 +454,19 @@ def vasama_dashboard():
                         osint_map(map_coordinates)
                     else:
                         st.write("No map coordinates available for this message.")
+                with tab8:
+                    st.subheader("Graph")
+                    # If network edges is not empty
+                    if network_edges and network_edges != "N/A" and network_edges != "[]":
+                        osint_graph([network_edges])
+                    else:
+                        st.write("No network edges available for this message.")
+
 
     if selection.empty:
-        tab1, tab2, tab3, tab4 = st.tabs(["Map", "Sentiments", "Entities", "Topics"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Sentiments", "Entities", "Topics", "Timeline", "Graph", "Map"])
+
         with tab1:
-            st.subheader("Map")
-            all_map_coordinates = filtered_df["map_coordinates"].dropna().astype(str)
-            # remove empty coordinates
-            osint_map_multiple(all_map_coordinates)
-        with tab2:
             st.subheader("Number of Messages")
             total_message_count = len(df)
             filtered_message_count = len(filtered_df)
@@ -412,20 +485,52 @@ def vasama_dashboard():
             neg = filtered_df["negative_sentiments"].dropna().astype(str).str.split(", ").explode().value_counts().head(20)
             st.plotly_chart(bar_counts(neg, title="Top negative", x_label="Negative"), use_container_width=True)
 
-        with tab3:
+        with tab2:
             st.subheader("Top Entities")
             entities_series = filtered_df["osint_entities"].dropna().astype(str).str.split(", ").explode()
             top_entities = entities_series.value_counts().head(20)
             # horizontal bar is often easier to read for long labels put ones with largest count to top
             fig = bar_counts(top_entities, title="Top 20 entities", x_label="Count", orientation="v")
             st.plotly_chart(fig, use_container_width=True)
-        with tab4:
+        with tab3:
             # Most Frequent Topics
             st.subheader("Top Topics")
             topics_series = filtered_df["osint_topics"].dropna().astype(str).str.split(", ").explode()
             top_topics = topics_series.value_counts().head(20)
             fig = bar_counts(top_topics, title="Top 20 topics", x_label="Topic")
             st.plotly_chart(fig, use_container_width=True)
+
+        with tab4:
+            st.subheader("Event Timeline")
+            # Get all timeline dates as lists
+            all_timeline_dates = filtered_df["timeline_dates"].dropna().astype(str)
+            new_dates_list = []
+            # for timeline_dates in all_timeline_dates:
+            for timeline_dates in all_timeline_dates:
+                # IF not empty
+                if timeline_dates and timeline_dates != "N/A" and timeline_dates != "[]":
+                    timeline_dates = eval(timeline_dates)
+                    new_dates_list.extend(timeline_dates)
+            #st.write("Number of events with timeline data:", new_dates_list)
+            osint_timeline(new_dates_list)
+
+        with tab5:
+            st.subheader("Network Graph")
+            all_edges = filtered_df["network_edges"].dropna().astype(str)
+            new_edges_list = []
+            for edges in all_edges:
+                # IF not empty
+                if edges and edges != "N/A" and edges != "[]":
+                    edges = eval(edges)
+                    new_edges_list.extend(edges)
+            osint_graph(new_edges_list)
+
+        with tab6:
+            st.subheader("Event Map")
+            all_map_coordinates = filtered_df["map_coordinates"].dropna().astype(str)
+            # remove empty coordinates
+            osint_map_multiple(all_map_coordinates)
+
 
 
 
