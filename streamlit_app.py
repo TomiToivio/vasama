@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 import folium
 from streamlit_folium import st_folium
 from streamlit_agraph import agraph, Node, Edge, Config
-from streamlit_timeline import st_timeline
 from datetime import datetime, timedelta
 
 def _count_series_to_df(s: pd.Series, name="count", index_name="value"):
@@ -84,28 +83,6 @@ def osint_map(map_coordinates):
         ).add_to(geomap)
     # call to render Folium map in Streamlit
     st_data = st_folium(geomap, width=725)
-
-def osint_timeline(timeline_dates):
-    timeline_items = []
-    for timeline_date in timeline_dates:
-        print(timeline_date)
-        event = timeline_date["event"]
-        date = timeline_date["date"]
-        # Make end date one day after start date
-        end_date = (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
-        description = timeline_date["description"]
-        # If has event, date, description
-        if event and date:
-            timeline_items.append({
-                "id": len(timeline_items) + 1,
-                "content": f"{event}: {description}",
-                "start": date,
-                "end": date,
-                "type": "box",
-            })
-    timeline = st_timeline(timeline_items, groups=[], options={}, height="300px")
-    st.subheader("Event Timeline")
-    st.write(timeline)
 
 def osint_graph(edges_list):
     nodes = []
@@ -464,7 +441,7 @@ def vasama_dashboard():
 
 
     if selection.empty:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Sentiments", "Entities", "Topics", "Timeline", "Graph", "Map"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Sentiments", "Entities", "Topics", "Graph", "Map"])
 
         with tab1:
             st.subheader("Number of Messages")
@@ -501,20 +478,6 @@ def vasama_dashboard():
             st.plotly_chart(fig, use_container_width=True)
 
         with tab4:
-            st.subheader("Event Timeline")
-            # Get all timeline dates as lists
-            all_timeline_dates = filtered_df["timeline_dates"].dropna().astype(str)
-            new_dates_list = []
-            # for timeline_dates in all_timeline_dates:
-            for timeline_dates in all_timeline_dates:
-                # IF not empty
-                if timeline_dates and timeline_dates != "N/A" and timeline_dates != "[]":
-                    timeline_dates = eval(timeline_dates)
-                    new_dates_list.extend(timeline_dates)
-            #st.write("Number of events with timeline data:", new_dates_list)
-            osint_timeline(new_dates_list)
-
-        with tab5:
             st.subheader("Network Graph")
             all_edges = filtered_df["network_edges"].dropna().astype(str)
             new_edges_list = []
@@ -525,7 +488,7 @@ def vasama_dashboard():
                     new_edges_list.extend(edges)
             osint_graph(new_edges_list)
 
-        with tab6:
+        with tab5:
             st.subheader("Event Map")
             all_map_coordinates = filtered_df["map_coordinates"].dropna().astype(str)
             # remove empty coordinates
