@@ -458,7 +458,7 @@ def vasama_dashboard():
 
 
     if selection.empty:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Sentiments", "Entities", "Topics", "Graph", "Map"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Sentiments", "Entities", "Topics", "Map"])
 
         with tab1:
             st.subheader("Number of Messages")
@@ -496,17 +496,6 @@ def vasama_dashboard():
             st.plotly_chart(fig, use_container_width=True)
 
         with tab4:
-            st.subheader("Network Graph")
-            all_edges = filtered_df["osint_network"].dropna().astype(str)
-            new_edges_list = []
-            for edges in all_edges:
-                # IF not empty
-                if edges and edges != "N/A" and edges != "[]":
-                    edges = eval(edges)
-                    new_edges_list.extend(edges)
-            osint_graph(new_edges_list)
-
-        with tab5:
             st.subheader("Event Map")
             # Get event_lat and event_lng from all messages
             all_events = filtered_df[["event_name", "event_location", "event_description", "event_lat", "event_lng"]].dropna(subset=["event_lat", "event_lng"]).to_dict(orient="records")
