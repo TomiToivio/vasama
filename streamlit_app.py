@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import folium
 from streamlit_folium import st_folium
 from streamlit_agraph import agraph, Node, Edge, Config
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 def _count_series_to_df(s: pd.Series, name="count", index_name="value"):
     df = s.reset_index()
@@ -62,25 +62,20 @@ def table_topic_words(topic_col, words_col, df, title):
     fig.update_layout(title=title, margin=dict(t=60, r=20, b=40, l=20))
     return fig
 
-def osint_map(map_coordinates):
-    map_coordinates = eval(map_coordinates)
+def osint_map(event_lat, event_lng, event_name, event_location, event_description):
     # get last lat and lng
-    last_coord = map_coordinates[-1]
-    lat = last_coord.get("lat", 48.8891738)
-    lng = last_coord.get("lng", 30.922972)
     # 48.8891738,30.922972,6.5z
-    geomap = folium.Map(location=[lat, lng], zoom_start=16)
-    for coord in map_coordinates:
-        event = coord.get("event", "N/A")
-        lat = coord.get("lat")
-        lng = coord.get("lng")
-        location = coord.get("location", "N/A")
-        description = coord.get("description", "N/A")
-        popup_text = f"Event: {event}<br>Description: {description}"
-        # Change icon
-        folium.Marker(
-            [lat, lng], popup=popup_text, tooltip=location, icon=folium.Icon(color="blue", icon="info-sign")
-        ).add_to(geomap)
+    geomap = folium.Map(location=[event_lat, event_lng], zoom_start=16)
+    event = event_name
+    lat = event_lat
+    lng = event_lng
+    location = event_location
+    description = event_description
+    popup_text = f"Event: {event}<br>Description: {description}"
+    # Change icon
+    folium.Marker(
+        [lat, lng], popup=popup_text, tooltip=location, icon=folium.Icon(color="blue", icon="info-sign")
+    ).add_to(geomap)
     # call to render Folium map in Streamlit
     st_data = st_folium(geomap, width=725)
 
@@ -88,9 +83,9 @@ def osint_graph(edges_list):
     nodes = []
     edges = []
     for edge in edges_list:
-        source = edge["source"]
-        target = edge["target"]
-        description = edge["description"]
+        source = edge["source_node"]
+        target = edge["target_node"]
+        description = edge["edge_description"]
         if source and target:
             # check if node already in nodes
             if not any(node.id == source for node in nodes):
@@ -102,34 +97,39 @@ def osint_graph(edges_list):
     config = Config(width="100%", height=400, directed=True, physics=True, hierarchical=False)
     return agraph(nodes=nodes, edges=edges, config=config)
 
-
-def osint_map_multiple(all_map_coordinates):
+def osint_map_multiple(all_events):
     cleaned_coordinates = []
     # 48.8891738,30.922972,6.5z
     geomap = folium.Map(location=[48.8891738, 30.922972], zoom_start=7)
-    for map_coordinate_list in all_map_coordinates:
-        map_coordinate_list = eval(map_coordinate_list)
-        # If not empty, add to cleaned_coordinates
-        if map_coordinate_list:
-            # if has lat and lng
-            for coord in map_coordinate_list:
-                if "lat" in coord and "lng" in coord:
-                    cleaned_coordinates.append(coord)
-    for coordinates in cleaned_coordinates:
-        event = coordinates.get("event", "N/A")
-        lat = coordinates.get("lat")
-        lng = coordinates.get("lng")
-        location = coordinates.get("location", "N/A")
-        description = coordinates.get("description", "N/A")
-        popup_text = f"Event: {event}<br>Description: {description}"
-        # Change icon
-        folium.Marker(
-            [lat, lng], popup=popup_text, tooltip=location, icon=folium.Icon(color="blue", icon="info-sign")
-        ).add_to(geomap)
+    for event in all_events:
+        event_name = event["event_name"]
+        event_location = event["event_location"]
+        event_description = event["event_description"]
+        event_lat = event["event_lat"]
+        event_lng = event["event_lng"]
+        popup_text = f"Event: {event_name}<br>Description: {event_description}"
+        # if event_lat and event_lng are numbers
+        if isinstance(event_lat, (int, float)) and isinstance(event_lng, (int, float)):
+            folium.Marker(
+                [event_lat, event_lng], popup=popup_text, tooltip=event_location, icon=folium.Icon(color="blue", icon="info-sign")
+            ).add_to(geomap)
     st_data = st_folium(geomap, width="100%")
+
+def format_iso_date(date_str):
+    # 31.08.2025 19:04:34
+    # 2025-08-31
+    split_date = date_str.split(" ")[0]
+    day, month, year = split_date.split(".")
+    date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+    formatted_date = date.fromisoformat(date_str)
+    # Convert to string
+    formatted_date = formatted_date.strftime("%Y-%m-%d")
+    return formatted_date
 
 def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.DataFrame:
     global selected_index
+    #_id,message_url,channel_url,event_date,event_description,event_lat,event_lng,event_location,event_name,message_date,message_language,message_text,multimodal_analysis,negative_sentiments,neutral_sentiments,ocr_text,osint_entities,osint_events,osint_network,osint_topics,positive_sentiments,spacy_entities,translated_text,whisper_language,whisper_transcript,whisper_translated
+    selected_index = []
     previous_selection = []
     column_config = {
         "Select": st.column_config.CheckboxColumn(
@@ -166,14 +166,6 @@ def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.
             label="Multimodal Analysis",
             help="Analysis of the multimodal content of the message.",
         ),
-        "political_analysis": st.column_config.TextColumn(
-            label="Political Analysis",
-            help="Analysis of the political content of the message.",
-        ),
-        "osint_analysis": st.column_config.TextColumn(
-            label="OSINT Analysis",
-            help="Analysis of the OSINT content of the message.",
-        ),
         "osint_entities": st.column_config.TextColumn(
             label="OSINT Entities",
             help="Entities related to OSINT mentioned in the message.",
@@ -206,26 +198,46 @@ def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.
             label="Whisper Translated",
             help="Translated text of the whisper audio.",
         ),
-        "map_coordinates": st.column_config.TextColumn(
-            label="Map Coordinates",
-            help="Geographical coordinates mentioned in the message.",
+        "osint_events": st.column_config.TextColumn(
+            label="OSINT Events",
+            help="OSINT events mentioned in the message.",
         ),
-        "network_edges": st.column_config.TextColumn(
-            label="Network Edges",
-            help="Network edges mentioned in the message.",
+        "osint_network": st.column_config.TextColumn(
+            label="OSINT Network",
+            help="OSINT network mentioned in the message.",
         ),
-        "timeline_dates": st.column_config.TextColumn(
-            label="Timeline Dates",
-            help="Timeline dates mentioned in the message.",
+        "ocr_text": st.column_config.TextColumn(
+            label="OCR Text",
+            help="Text extracted from images using OCR.",
         ),
-        "channel_id": None,
-        "geo_locations": None,
-        "message_id": None,
-        "message_raw_text": None,
-        "ocr_text": None,
-        "russian_entities": None,
-        "spacy_entities": None,
-        "ukrainian_entities": None,
+        "spacy_entities": st.column_config.TextColumn(
+            label="Spacy Entities",
+            help="Entities extracted using Spacy NLP library.",
+        ),
+        "event_date": st.column_config.DateColumn(
+            label="Event Date",
+            help="Date of the OSINT event.",
+        ),
+        "event_description": st.column_config.TextColumn(
+            label="Event Description",
+            help="Description of the OSINT event.",
+        ),
+        "event_location": st.column_config.TextColumn(
+            label="Event Location",
+            help="Location of the OSINT event.",
+        ),
+        "event_lat": st.column_config.NumberColumn(
+            label="Event Latitude",
+            help="Latitude of the OSINT event location.",
+        ),
+        "event_lng": st.column_config.NumberColumn(
+            label="Event Longitude",
+            help="Longitude of the OSINT event location.",
+        ),
+        "event_name": st.column_config.TextColumn(
+            label="Event Name",
+            help="Name of the OSINT event.",
+        ),
     }
     df_with_selections = df.copy()
     df_with_selections.insert(0, "Select", init_value)
@@ -233,11 +245,24 @@ def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.
         df_with_selections,
         hide_index=True,
         column_config=column_config,
-        column_order=["Select","message_url","message_date","message_text","translated_text","message_language","multimodal_analysis","osint_analysis","political_analysis","osint_topics","osint_entities","positive_sentiments","neutral_sentiments","negative_sentiments","whisper_language","whisper_transcript","whisper_translated","map_coordinates","network_edges","timeline_dates"],
+        column_order=["Select","_id","message_url","channel_url","message_date","message_text","message_language","translated_text","ocr_text","spacy_entities","whisper_language","whisper_transcript","whisper_translated","multimodal_analysis","osint_entities","osint_events","osint_network","osint_topics","positive_sentiments","negative_sentiments","neutral_sentiments","event_name","event_date","event_location","event_description","event_lat","event_lng"],
         disabled=df.columns,
     )
     selected_rows = edited_df[edited_df.Select]
     return selected_rows.drop('Select', axis=1)
+
+def clean_list(input_string):
+    output_string = ""
+    length = 0
+    input_list = eval(input_string)
+    if len(input_list) == 0:
+        return None
+    for item in input_list:
+        output_string += item + ", "
+        length += 1
+    if length > 0:
+        output_string = output_string[:-2]
+    return output_string
 
 def vasama_dashboard():
     global df, selected_index
@@ -288,6 +313,7 @@ def vasama_dashboard():
         index=0,  
         help="Filter by neutral sentiments."
     )
+    # eval if list
     negative_sentiments = df["negative_sentiments"].dropna().str.split(",").explode().str.strip().unique().tolist()
     # Order alphabetically
     negative_sentiments.sort()
@@ -302,9 +328,10 @@ def vasama_dashboard():
     min_date = df["message_date"].min().date()
     max_date = df["message_date"].max().date()
     # Add default end date 2025-08-24
-    default_end_date = datetime(2025, 8, 24).date()
+    # Get last date in dataframe
+    default_end_date = df["message_date"].max().date()
     # add default start date 2025-08-23
-    default_start_date = datetime(2025, 8, 23).date()
+    default_start_date = df["message_date"].min().date()
     # Add start date filter
     start_date = st.sidebar.date_input(
         "Select start date:",
@@ -368,19 +395,22 @@ def vasama_dashboard():
             message_username = message_data.get("message_username", "N/A")
             message_translated = message_data.get("translated_text", "N/A")
             multimodal_analysis = message_data.get("multimodal_analysis", "N/A")
-            osint_analysis = message_data.get("osint_analysis", "N/A")
             osint_entities = message_data.get("osint_entities", "N/A")
             osint_topics = message_data.get("osint_topics", "N/A")
-            political_analysis = message_data.get("political_analysis", "N/A")
             negative_sentiments = message_data.get("negative_sentiments", "N/A")
             neutral_sentiments = message_data.get("neutral_sentiments", "N/A")
             positive_sentiments = message_data.get("positive_sentiments", "N/A")
-            political_themes = message_data.get("political_themes", "N/A")
             whisper_transcript = message_data.get("whisper_transcript", "N/A")
             whisper_language = message_data.get("whisper_language", "N/A")
             whisper_translated = message_data.get("whisper_translated", "N/A")
-            map_coordinates = message_data.get("map_coordinates", "N/A")
-            network_edges = message_data.get("network_edges", "N/A")
+            osint_events = message_data.get("osint_events", "N/A")
+            osint_network = message_data.get("osint_network", "N/A")
+            event_name = message_data.get("event_name", "N/A")
+            event_date = message_data.get("event_date", "N/A")
+            event_location = message_data.get("event_location", "N/A")
+            event_description = message_data.get("event_description", "N/A")
+            event_lat = message_data.get("event_lat", "N/A")
+            event_lng = message_data.get("event_lng", "N/A")
             col1, col2 = st.columns([0.3, 0.7])
             with col1:
                 st.subheader("Message Details")
@@ -393,7 +423,7 @@ def vasama_dashboard():
                 message_translated = message_translated.replace("\\n", "<br>")
                 st.markdown(message_translated, unsafe_allow_html=True)
             with col2:
-                tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Multimodal", "OSINT", "Political", "Entities", "Sentiments", "Topics", "Whisper", "Map"])
+                tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Multimodal", "Entities", "Sentiments", "Topics", "Whisper", "Map"])
                 with tab1:
                     #st.subheader("Multimodal Analysis")
                     # Convert "\n"
@@ -401,34 +431,27 @@ def vasama_dashboard():
                     multimodal_analysis = multimodal_analysis.replace('\\n', '<br>')
                     st.markdown(multimodal_analysis, unsafe_allow_html=True)
                 with tab2:
-                    st.subheader("OSINT Analysis")
-                    osint_analysis = osint_analysis.replace("\\n", "<br>")
-                    st.markdown(osint_analysis, unsafe_allow_html=True)
-                with tab3:
-                    st.subheader("Political Analysis")
-                    political_analysis = political_analysis.replace("\\n", "<br>")
-                    st.markdown(political_analysis, unsafe_allow_html=True)
-                with tab4:
                     st.subheader("Entities")
                     st.write(str(osint_entities))
-                with tab5:
+                with tab3:
                     st.subheader("Sentiments")
                     st.write("**Positive Sentiments:**", str(positive_sentiments))
                     st.write("**Neutral Sentiments:**", str(neutral_sentiments))
                     st.write("**Negative Sentiments:**", str(negative_sentiments))
-                with tab6:
+                with tab4:
                     st.subheader("Topics")
                     st.write("**OSINT Topics:**", str(osint_topics))
-                with tab7:
+                with tab5:
                     st.subheader("Whisper")
                     st.write("**Whisper Transcript:**", str(whisper_transcript))
                     st.write("**Whisper Language:**", str(whisper_language))
                     st.write("**Whisper Translated:**", str(whisper_translated))
-                with tab8:
+                with tab6 :
                     st.subheader("Coordinates")
                     # If map coordinates is not empty
-                    if map_coordinates and map_coordinates != "N/A" and map_coordinates != "[]":
-                        osint_map(map_coordinates)
+                    # event_lat, event_lng
+                    if event_lat != "N/A" and event_lng != "N/A":
+                        osint_map(event_lat, event_lng, event_name, event_location, event_description)
                     else:
                         st.write("No map coordinates available for this message.")
 
@@ -445,6 +468,7 @@ def vasama_dashboard():
             st.write(f"Filtered messages: {filtered_message_count}")
             # Messages by day
             st.subheader("Top Positive Sentiments")
+            # Ignore empty values
             pos = filtered_df["positive_sentiments"].dropna().astype(str).str.split(", ").explode().value_counts().head(20)
             st.plotly_chart(bar_counts(pos, title="Top positive", x_label="Positive"), use_container_width=True)
 
@@ -473,7 +497,7 @@ def vasama_dashboard():
 
         with tab4:
             st.subheader("Network Graph")
-            all_edges = filtered_df["network_edges"].dropna().astype(str)
+            all_edges = filtered_df["osint_network"].dropna().astype(str)
             new_edges_list = []
             for edges in all_edges:
                 # IF not empty
@@ -484,12 +508,10 @@ def vasama_dashboard():
 
         with tab5:
             st.subheader("Event Map")
-            all_map_coordinates = filtered_df["map_coordinates"].dropna().astype(str)
+            # Get event_lat and event_lng from all messages
+            all_events = filtered_df[["event_name", "event_location", "event_description", "event_lat", "event_lng"]].dropna(subset=["event_lat", "event_lng"]).to_dict(orient="records")
             # remove empty coordinates
-            osint_map_multiple(all_map_coordinates)
-
-
-
+            osint_map_multiple(all_events)
 
 st.set_page_config(
     page_title="Vasama Telegram Data Analysis Demo",
@@ -509,8 +531,15 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("vasama_dataframe.csv", engine='python', encoding='utf-8')
-    # Convert message_date to datetime
+    df = pd.read_csv("dataframe.csv", engine='python', encoding='utf-8')
+    #2025-08-31
+    df["osint_topics"] = df["osint_topics"].apply(clean_list)
+    df["osint_entities"] = df["osint_entities"].apply(clean_list)
+    df["positive_sentiments"] = df["positive_sentiments"].apply(clean_list)
+    df["neutral_sentiments"] = df["neutral_sentiments"].apply(clean_list)
+    df["negative_sentiments"] = df["negative_sentiments"].apply(clean_list)
+    # Convert message_date to format_iso_date
+    df["message_date"] = df["message_date"].apply(format_iso_date)
     df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
     return df
 
