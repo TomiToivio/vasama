@@ -542,7 +542,7 @@ else:
     selected_index = st.session_state.selected_row_index
 
 st.title("Vasama: Telegram Data Analysis Demo")
-
+st.subheader("Data collected from Telegram and analyzed with Ollama")
 vasama_dashboard()
 
 st.caption("Vasama: Telegram Data Analysis Demo")
