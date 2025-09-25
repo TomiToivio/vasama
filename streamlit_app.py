@@ -530,6 +530,8 @@ def load_data():
     # Convert message_date to format_iso_date
     df["message_date"] = df["message_date"].apply(format_iso_date)
     df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
+    # Order by message_date desc
+    df = df.sort_values(by="message_date", ascending=False)
     return df
 
 df = load_data()
