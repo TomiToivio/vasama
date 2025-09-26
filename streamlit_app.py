@@ -469,20 +469,20 @@ def vasama_dashboard():
             # Messages by day
             st.subheader("Top Positive Sentiments")
             # Ignore empty values
-            pos = filtered_df["positive_sentiments"].dropna().astype(str).str.split(", ").explode().value_counts().head(20)
+            pos = filtered_df["positive_sentiments"].dropna().astype(str).str.split(",").explode().value_counts().head(20)
             st.plotly_chart(bar_counts(pos, title="Top positive", x_label="Positive"), use_container_width=True)
 
             st.subheader("Top Neutral Sentiments")
-            neu = filtered_df["neutral_sentiments"].dropna().astype(str).str.split(", ").explode().value_counts().head(20)
+            neu = filtered_df["neutral_sentiments"].dropna().astype(str).str.split(",").explode().value_counts().head(20)
             st.plotly_chart(bar_counts(neu, title="Top neutral", x_label="Neutral"), use_container_width=True)
 
             st.subheader("Top Negative Sentiments")
-            neg = filtered_df["negative_sentiments"].dropna().astype(str).str.split(", ").explode().value_counts().head(20)
+            neg = filtered_df["negative_sentiments"].dropna().astype(str).str.split(",").explode().value_counts().head(20)
             st.plotly_chart(bar_counts(neg, title="Top negative", x_label="Negative"), use_container_width=True)
 
         with tab2:
             st.subheader("Top Entities")
-            entities_series = filtered_df["osint_entities"].dropna().astype(str).str.split(", ").explode()
+            entities_series = filtered_df["osint_entities"].dropna().astype(str).str.split(",").explode()
             top_entities = entities_series.value_counts().head(20)
             # horizontal bar is often easier to read for long labels put ones with largest count to top
             fig = bar_counts(top_entities, title="Top 20 entities", x_label="Count", orientation="v")
@@ -490,7 +490,7 @@ def vasama_dashboard():
         with tab3:
             # Most Frequent Topics
             st.subheader("Top Topics")
-            topics_series = filtered_df["osint_topics"].dropna().astype(str).str.split(", ").explode()
+            topics_series = filtered_df["osint_topics"].dropna().astype(str).str.split(",").explode()
             top_topics = topics_series.value_counts().head(20)
             fig = bar_counts(top_topics, title="Top 20 topics", x_label="Topic")
             st.plotly_chart(fig, use_container_width=True)
@@ -522,16 +522,14 @@ st.set_page_config(
 def load_data():
     df = pd.read_csv("dataframe.csv", engine='python', encoding='utf-8')
     #2025-08-31
-    df["osint_topics"] = df["osint_topics"].apply(clean_list)
-    df["osint_entities"] = df["osint_entities"].apply(clean_list)
-    df["positive_sentiments"] = df["positive_sentiments"].apply(clean_list)
-    df["neutral_sentiments"] = df["neutral_sentiments"].apply(clean_list)
-    df["negative_sentiments"] = df["negative_sentiments"].apply(clean_list)
+    #df["osint_topics"] = df["osint_topics"].apply(clean_list)
+    #df["osint_entities"] = df["osint_entities"].apply(clean_list)
+    #df["positive_sentiments"] = df["positive_sentiments"].apply(clean_list)
+    #df["neutral_sentiments"] = df["neutral_sentiments"].apply(clean_list)
+    #df["negative_sentiments"] = df["negative_sentiments"].apply(clean_list)
     # Convert message_date to format_iso_date
     df["message_date"] = df["message_date"].apply(format_iso_date)
     df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
-    # Order by message_date desc
-    df = df.sort_values(by="message_date", ascending=False)
     return df
 
 df = load_data()
@@ -544,7 +542,7 @@ else:
     selected_index = st.session_state.selected_row_index
 
 st.title("Vasama: Telegram Data Analysis Demo")
-st.subheader("Data collected from Telegram and analyzed with Ollama")
+
 vasama_dashboard()
 
 st.caption("Vasama: Telegram Data Analysis Demo")
