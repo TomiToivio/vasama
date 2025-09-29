@@ -458,7 +458,7 @@ def vasama_dashboard():
 
 
     if selection.empty:
-        tab1, tab2, tab3, tab4 = st.tabs(["Sentiments", "Entities", "Topics", "Map"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Sentiments", "Entities", "Topics", "Map", "Vasama"])
 
         with tab1:
             st.subheader("Number of Messages")
@@ -501,6 +501,20 @@ def vasama_dashboard():
             all_events = filtered_df[["event_name", "event_location", "event_description", "event_lat", "event_lng"]].dropna(subset=["event_lat", "event_lng"]).to_dict(orient="records")
             # remove empty coordinates
             osint_map_multiple(all_events)
+
+        with tab5:
+            st.subheader("About Vasama")
+            st.markdown("""This dashboard is a demo of [Vasama](https://github.com/TomiToivio/vasama), a customizable data collection and analysis framework. Vasama uses [Ollama](https://ollama.com/) to run local open source LLM models for multimodal data analysis. Applications include political sentiment analysis, OSINT analysis and market analysis. This [Streamlit dashboard](https://vasama.streamlit.app/) is a demonstration of Vasama data analysis results. Data is related to the war in Ukraine and collected from Telegram channels. The data analysis takes into account OSINT information as well as geopolitical sentiments.
+
+            ## Basic Components
+            * Data Collection: Data collection with custom web scrapers and official APIs.
+            * Data Storage: Storage of metadata and media files.
+            * Data Analysis: Customizable data analysis pipeline with multimodal LLMs and other data analysis tools.
+            * Data Visualization: [Streamlit dashboard](https://vasama.streamlit.app/) of data analysis results.
+
+            ## Optional Components
+            * Data Collection Agent: Tool-using data collection LLM agent. 
+            * Data Analysis Chatbot: RAG chatbot explaining data analysis results.""", unsafe_allow_html=True)
 
 st.set_page_config(
     page_title="Vasama Telegram Data Analysis Demo",
