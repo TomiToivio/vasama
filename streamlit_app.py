@@ -504,16 +504,15 @@ def vasama_dashboard():
 
         with tab5:
             st.subheader("About Vasama")
-            st.markdown("""This dashboard is a demo of [Vasama](https://github.com/TomiToivio/vasama), a customizable data collection and analysis framework. Vasama uses [Ollama](https://ollama.com/) to run local open source LLM models for multimodal data analysis. Applications include political sentiment analysis, OSINT analysis and market analysis. This [Streamlit dashboard](https://vasama.streamlit.app/) is a demonstration of Vasama data analysis results. Data is related to the war in Ukraine and collected from Telegram channels. The data analysis takes into account OSINT information as well as geopolitical sentiments.
-
-            ## Basic Components
-            * Data Collection: Data collection with custom web scrapers and official APIs.
+            st.markdown("""This dashboard is a demonstration of [Vasama](https://github.com/TomiToivio/vasama), a customizable data collection and analysis framework. Vasama uses [Ollama](https://ollama.com/) to run local open source LLM models for multimodal data analysis. Applications include political sentiment analysis, OSINT analysis and market analysis.  Data is related to the war in Ukraine and collected from Telegram channels. The data analysis takes into account OSINT information as well as geopolitical sentiments.""", unsafe_allow_html=True)
+            st.markdown("""Vasama is based on the [LaclauGPT](https://github.com/TomiToivio/LaclauGPT-Multimodal-Analysis) data collection and analysis pipeline developed by [Tomi Toivio](mailto:tomi.toivio@helsinki.fi) for the University of Helsinki.""", unsafe_allow_html=True)
+            st.subheader("Basic Components")
+            st.markdown("""* Data Collection: Data collection with custom web scrapers and official APIs.
             * Data Storage: Storage of metadata and media files.
             * Data Analysis: Customizable data analysis pipeline with multimodal LLMs and other data analysis tools.
-            * Data Visualization: [Streamlit dashboard](https://vasama.streamlit.app/) of data analysis results.
-
-            ## Optional Components
-            * Data Collection Agent: Tool-using data collection LLM agent. 
+            * Data Visualization: [Streamlit dashboard](https://vasama.streamlit.app/) of data analysis results.""", unsafe_allow_html=True)
+            st.subheader("Optional Components")
+            st.markdown("""* Data Collection Agent: Tool-using data collection LLM agent. 
             * Data Analysis Chatbot: RAG chatbot explaining data analysis results.""", unsafe_allow_html=True)
 
 st.set_page_config(
@@ -535,13 +534,6 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     df = pd.read_csv("dataframe.csv", engine='python', encoding='utf-8')
-    #2025-08-31
-    #df["osint_topics"] = df["osint_topics"].apply(clean_list)
-    #df["osint_entities"] = df["osint_entities"].apply(clean_list)
-    #df["positive_sentiments"] = df["positive_sentiments"].apply(clean_list)
-    #df["neutral_sentiments"] = df["neutral_sentiments"].apply(clean_list)
-    #df["negative_sentiments"] = df["negative_sentiments"].apply(clean_list)
-    # Convert message_date to format_iso_date
     df["message_date"] = df["message_date"].apply(format_iso_date)
     df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
     return df
