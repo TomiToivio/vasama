@@ -6,7 +6,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import folium
 from streamlit_folium import st_folium
-from streamlit_agraph import agraph, Node, Edge, Config
 from datetime import datetime, timedelta, date
 
 def _count_series_to_df(s: pd.Series, name="count", index_name="value"):
@@ -78,24 +77,6 @@ def osint_map(event_lat, event_lng, event_name, event_location, event_descriptio
     ).add_to(geomap)
     # call to render Folium map in Streamlit
     st_data = st_folium(geomap, width=725)
-
-def osint_graph(edges_list):
-    nodes = []
-    edges = []
-    for edge in edges_list:
-        source = edge["source_node"]
-        target = edge["target_node"]
-        description = edge["edge_description"]
-        if source and target:
-            # check if node already in nodes
-            if not any(node.id == source for node in nodes):
-                nodes.append(Node(id=source))
-            if not any(node.id == target for node in nodes):
-                nodes.append(Node(id=target))
-            # check if edge already in edges
-            edges.append(Edge(source=source, target=target, label=description))
-    config = Config(width="100%", height=400, directed=True, physics=True, hierarchical=False)
-    return agraph(nodes=nodes, edges=edges, config=config)
 
 def osint_map_multiple(all_events):
     cleaned_coordinates = []
@@ -348,6 +329,9 @@ def vasama_dashboard():
         max_value=max_date,
         help="Filter by end date."
     )
+    # Add button for reloading dataframe
+    if st.sidebar.button("Reload DataFrame"):
+        df = load_data()
     if start_date > end_date:
         st.sidebar.error("Error: End date must fall after start date.")
     df = df[(df["message_date"].dt.date >= start_date) & (df["message_date"].dt.date <= end_date)]
@@ -458,9 +442,29 @@ def vasama_dashboard():
 
 
     if selection.empty:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Sentiments", "Entities", "Topics", "Map", "Vasama"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Report", "Sentiments", "Entities", "Topics", "Map", "Vasama"])
 
         with tab1:
+            st.subheader("Latest Daily Reports")
+            # Get          "report_date": date_string, "report_text": daily_report,
+            # Get three latest reports from report_df
+            report_df = pd.read_csv("report_collection.csv", engine='python', encoding='utf-8')
+            # Get first row of latest_reports
+            # Read file latest-report.md
+            subtab1, subtab2 = st.tabs(["Latest Report", "All Reports"])
+            with subtab1:
+                # Get latest report
+                latest_report = report_df.iloc[0]
+                latest_report_text = latest_report["report_text"]
+                latest_report_date = latest_report["report_date"]
+                st.subheader(f"Report Date: {latest_report_date}")
+                st.markdown(latest_report_text, unsafe_allow_html=True)
+            with subtab2:
+                st.subheader("All Reports")
+                # Show report_df in a dataframe
+                st.dataframe(report_df, use_container_width=True)
+
+        with tab2:
             st.subheader("Number of Messages")
             total_message_count = len(df)
             filtered_message_count = len(filtered_df)
@@ -480,14 +484,14 @@ def vasama_dashboard():
             neg = filtered_df["negative_sentiments"].dropna().astype(str).str.split(",").explode().value_counts().head(20)
             st.plotly_chart(bar_counts(neg, title="Top negative", x_label="Negative"), use_container_width=True)
 
-        with tab2:
+        with tab3:
             st.subheader("Top Entities")
             entities_series = filtered_df["osint_entities"].dropna().astype(str).str.split(",").explode()
             top_entities = entities_series.value_counts().head(20)
             # horizontal bar is often easier to read for long labels put ones with largest count to top
             fig = bar_counts(top_entities, title="Top 20 entities", x_label="Count", orientation="v")
             st.plotly_chart(fig, use_container_width=True)
-        with tab3:
+        with tab4:
             # Most Frequent Topics
             st.subheader("Top Topics")
             topics_series = filtered_df["osint_topics"].dropna().astype(str).str.split(",").explode()
@@ -495,14 +499,14 @@ def vasama_dashboard():
             fig = bar_counts(top_topics, title="Top 20 topics", x_label="Topic")
             st.plotly_chart(fig, use_container_width=True)
 
-        with tab4:
+        with tab5:
             st.subheader("Event Map")
             # Get event_lat and event_lng from all messages
             all_events = filtered_df[["event_name", "event_location", "event_description", "event_lat", "event_lng"]].dropna(subset=["event_lat", "event_lng"]).to_dict(orient="records")
             # remove empty coordinates
             osint_map_multiple(all_events)
 
-        with tab5:
+        with tab6:
             st.subheader("About Vasama")
             st.markdown("""This dashboard is a demonstration of [Vasama](https://github.com/TomiToivio/vasama), a customizable data collection and analysis framework. Vasama uses [Ollama](https://ollama.com/) to run local open source LLM models for multimodal data analysis. Applications include political sentiment analysis, OSINT analysis and market analysis.  Data is related to the war in Ukraine and collected from Telegram channels. The data analysis takes into account OSINT information as well as geopolitical sentiments.""", unsafe_allow_html=True)
             st.markdown("""Vasama is based on the [LaclauGPT](https://github.com/TomiToivio/LaclauGPT-Multimodal-Analysis) data collection and analysis pipeline developed by [Tomi Toivio](mailto:tomi.toivio@helsinki.fi) for the University of Helsinki.""", unsafe_allow_html=True)
@@ -514,6 +518,7 @@ def vasama_dashboard():
             st.subheader("Optional Components")
             st.markdown("""* Data Collection Agent: Tool-using data collection LLM agent.""", unsafe_allow_html=True)
             st.markdown("""* Data Analysis Chatbot: RAG chatbot explaining data analysis results.""", unsafe_allow_html=True)
+
 
 st.set_page_config(
     page_title="Vasama Telegram Data Analysis Demo",
@@ -534,12 +539,12 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     df = pd.read_csv("dataframe.csv", engine='python', encoding='utf-8')
+    # Read file latest-report.md
     df["message_date"] = df["message_date"].apply(format_iso_date)
     df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
     return df
 
 df = load_data()
-
 
 # On rerun
 if "selected_row_index" not in st.session_state:
