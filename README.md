@@ -4,10 +4,11 @@ This is the repository for the [Vasama Telegram Data Analysis Demo](https://vasa
 
 ## Basic Components
 * Data Collection: Data collection with custom web scrapers and official APIs.
-* Data Storage: Storage of metadata and media files.
+* Data Storage: Storage of media files in S3 and data in MongoDB.
 * Data Analysis: Customizable data analysis pipeline with multimodal LLMs and other data analysis tools.
 * Data Visualization: [Streamlit dashboard](https://vasama.streamlit.app/) of data analysis results.
 
 ## Optional Components
-* Data Collection Agent: Tool-using data collection LLM agent. 
+* Daily Summary Reports: Daily summaries of data analysis results.
+* Data Collection Agent: Tool-using data collection agent. 
 * Data Analysis Chatbot: RAG chatbot explaining data analysis results. 
