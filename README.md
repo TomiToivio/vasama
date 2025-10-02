@@ -5,7 +5,7 @@ This is the repository for the [Vasama Telegram Data Analysis Demo](https://vasa
 ## Basic Components
 * Data Collection: Data collection with custom web scrapers and official APIs.
 * Data Storage: Storage of media files in S3 and data in MongoDB.
-* Data Analysis: Customizable data analysis pipeline with multimodal LLMs and other data analysis tools.
+* Data Analysis: Customizable data analysis pipeline. Uses Ollama to run open source LLM models locally. 
 * Data Visualization: [Streamlit dashboard](https://vasama.streamlit.app/) of data analysis results.
 
 ## Optional Components
