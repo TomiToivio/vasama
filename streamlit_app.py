@@ -97,14 +97,41 @@ def osint_map_multiple(all_events):
     st_data = st_folium(geomap, width="100%")
 
 def format_iso_date(date_str):
+    # Convert date string to iso format
+    try:
+        # Turn month and day to other way around if format is dd.mm.yyyy
+        split_date = date_str.split(" ")[0]
+        day, month, year = split_date.split("-")
+        split_date = date_str.split(" ")[1]
+        hour, minute, second = split_date.split(":")
+        date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)} {hour.zfill(2)}:{minute.zfill(2)}:{second.zfill(2)}"
+        formatted_date = datetime.fromisoformat(date_str)
+    except ValueError:
+        try:
+            formatted_date = datetime.strptime(date_str, "%d.%m.%Y %H:%M:%S")
+        except ValueError:
+            try:
+                formatted_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                try:
+                    formatted_date = datetime.strptime(date_str, "%Y-%m-%d")
+                except ValueError:
+                    try:
+                        formatted_date = datetime.strptime(date_str, "%d.%m.%Y")
+                    except ValueError:
+                        # If fails, return original string
+                        return date_str
     # 31.08.2025 19:04:34
     # 2025-08-31
-    split_date = date_str.split(" ")[0]
-    day, month, year = split_date.split(".")
-    date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-    formatted_date = date.fromisoformat(date_str)
+    #split_date = date_str.split(" ")[0]
+    #year, day, mo = split_date.split("-")
+    #split_date = date_str.split(" ")[1]
+    #hour, minute, second = split_date.split(":")
+    # 2025-12-09 23:53:52
+    #date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)} {hour.zfill(2)}:{minute.zfill(2)}:{second.zfill(2)}"
+    #formatted_date = date.fromisoformat(date_str)
     # Convert to string
-    formatted_date = formatted_date.strftime("%Y-%m-%d")
+    #formatted_date = formatted_date.strftime("%Y-%m-%d %H:%M:%S")
     return formatted_date
 
 def dataframe_with_selections(df: pd.DataFrame, init_value: bool = False) -> pd.DataFrame:
@@ -305,6 +332,8 @@ def vasama_dashboard():
         index=0,  
         help="Filter by negative sentiments."
     )
+    # message_date to datetime
+    df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
     # Add start and end date filter
     min_date = df["message_date"].min().date()
     max_date = df["message_date"].max().date()
@@ -540,7 +569,11 @@ st.set_page_config(
 def load_data():
     df = pd.read_csv("dataframe.csv", engine='python', encoding='utf-8')
     # Read file latest-report.md
-    df["message_date"] = df["message_date"].apply(format_iso_date)
+    #df["message_date"] = df["message_date"].apply(format_iso_date)
+    #df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
+    # message_date to iso format
+    df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
+    df["message_date"] = df["message_date"].dt.strftime("%Y-%m-%d %H:%M:%S")
     df["message_date"] = pd.to_datetime(df["message_date"], errors='coerce')
     return df
 
