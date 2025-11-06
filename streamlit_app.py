@@ -397,7 +397,8 @@ def vasama_dashboard():
     filtered_df = filtered_df[(filtered_df["negative_sentiments"].isin(negative_sentiment_filter))]
     if search_query:
         filtered_df = filtered_df[filtered_df.apply(lambda row: row.astype(str).str.contains(search_query, case=False, na=False).any(), axis=1)]
-    st.markdown("[Vasama](https://github.com/TomiToivio/vasama) OSINT demo dashboard with map and daily reports. This public demo does not have real-time data.", unsafe_allow_html=True)
+    st.markdown("[Vasama](https://github.com/TomiToivio/vasama) OSINT demo dashboard with map and daily reports.", unsafe_allow_html=True)
+    st.markdown("This public demo does not have real-time data. It is updated randomly.", unsafe_allow_html=True)
     selection = dataframe_with_selections(filtered_df)
 
     if not selection.empty:
